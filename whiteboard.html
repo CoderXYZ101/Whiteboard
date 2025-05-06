@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Whiteboard</title>
+<style>
+body {
+font-family: sans-serif;
+margin: 0;
+padding: 0;
+text-align: left;
+}
+#toolbar {
+background: #eee;
+padding: 10px;
+display: flex;
+gap: 5px;
+flex-wrap: wrap;
+}
+canvas {
+border: 1px solid #999;
+margin: 10px 0 0 10px;
+}
+textarea {
+position: absolute;
+display: none;
+z-index: 10;
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+<select id="tool">
+<option value="pen">Pen</option>
+<option value="eraser">Eraser</option>
+<option value="rect">Rectangle</option>
+<option value="circle">Circle</option>
+<option value="text">Text</option>
+</select>
+<input type="color" id="color" value="#000000">
+<input type="number" id="size" value="2" min="1" max="20">
+<button onclick="addBoard()">New Board</button>
+<select id="boardSelector" onchange="switchBoard()"></select>
+<button onclick="showCalc()">Calculator</button>
+</div>
+<div id="boards"></div>
+<div id="calc" style="display:none;padding:10px;">
+<input type="text" id="expression">
+<button onclick="calculate()">=</button>
+<span id="result"></span>
+</div>
+<textarea id="textInput"></textarea>
+<script>
+let boards = []
+let currentBoard = 0
+function addBoard() {
+let canvas = document.createElement('canvas')
+canvas.width = 800
+canvas.height = 500
+canvas.className = 'board'
+if (boards.length === 0) canvas.classList.add('active')
+document.getElementById('boards').appendChild(canvas)
+boards.push(canvas)
+let opt = document.createElement('option')
+opt.text = 'Board ' + boards.length
+opt.value = boards.length - 1
+document.getElementById('boardSelector').appendChild(opt)
+canvas.addEventListener('mousedown', startDraw)
+canvas.addEventListener('mousemove', draw)
+canvas.addEventListener('mouseup', stopDraw)
+}
+function switchBoard() {
+boards[currentBoard].classList.remove('active')
+currentBoard = parseInt(document.getElementById('boardSelector').value)
+boards[currentBoard].classList.add('active')
+}
+function showCalc() {
+let calc = document.getElementById('calc')
+calc.style.display = calc.style.display === 'none' ? 'block' : 'none'
+}
+function calculate() {
+let exp = document.getElementById('expression').value
+try {
+document.getElementById('result').textContent = eval(exp)
+} catch {
+document.getElementById('result').textContent = 'Error'
+}
+}
+let drawing = false
+let startX, startY
+function getCtx() {
+return boards[currentBoard].getContext('2d')
+}
+function startDraw(e) {
+drawing = true
+startX = e.offsetX
+startY = e.offsetY
+let tool = document.getElementById('tool').value
+if (tool === 'text') {
+let txt = document.getElementById('textInput')
+txt.style.left = e.pageX + 'px'
+txt.style.top = e.pageY + 'px'
+txt.style.display = 'block'
+txt.focus()
+txt.onblur = () => {
+let ctx = getCtx()
+ctx.fillStyle = document.getElementById('color').value
+ctx.font = '16px sans-serif'
+ctx.fillText(txt.value, startX, startY)
+txt.value = ''
+txt.style.display = 'none'
+}
+drawing = false
+}
+}
+function draw(e) {
+if (!drawing) return
+let ctx = getCtx()
+let tool = document.getElementById('tool').value
+let color = document.getElementById('color').value
+let size = parseInt(document.getElementById('size').value)
+if (tool === 'pen') {
+ctx.strokeStyle = color
+ctx.lineWidth = size
+ctx.lineCap = 'round'
+ctx.lineTo(e.offsetX, e.offsetY)
+ctx.stroke()
+ctx.beginPath()
+ctx.moveTo(e.offsetX, e.offsetY)
+} else if (tool === 'eraser') {
+ctx.clearRect(e.offsetX - size / 2, e.offsetY - size / 2, size, size)
+}
+}
+function stopDraw(e) {
+if (!drawing) return
+let ctx = getCtx()
+let tool = document.getElementById('tool').value
+let color = document.getElementById('color').value
+let size = parseInt(document.getElementById('size').value)
+if (tool === 'rect') {
+ctx.strokeStyle = color
+ctx.lineWidth = size
+ctx.strokeRect(startX, startY, e.offsetX - startX, e.offsetY - startY)
+}
+if (tool === 'circle') {
+ctx.strokeStyle = color
+ctx.lineWidth = size
+let radius = Math.sqrt(Math.pow(e.offsetX - startX, 2) + Math.pow(e.offsetY - startY, 2))
+ctx.beginPath()
+ctx.arc(startX, startY, radius, 0, Math.PI * 2)
+ctx.stroke()
+}
+ctx.beginPath()
+drawing = false
+}
+addBoard()
+</script>
+</body>
+</html>
